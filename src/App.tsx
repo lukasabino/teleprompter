@@ -67,9 +67,10 @@ const BUTTON_LABELS: Record<number, string> = {
   0: 'Botao 0 / A',
   1: 'Botao 1 / B',
   2: 'Botao 2 / X',
+  3: 'Botao 3 / Y',
   4: 'Botao 4 / LB',
   5: 'Botao 5 / RB',
-  9: 'Botao 9 / Start',
+  9: 'Botao 9 / OK',
   12: 'D-pad cima',
   13: 'D-pad baixo',
 };
@@ -456,24 +457,29 @@ function App() {
           if (isPressed && !wasPressed) {
             switch (index) {
               case 0:
-              case 9:
-                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Play/Pausa', handlePlayToggle);
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Subir texto', handleMoveTextUp);
                 break;
               case 1:
-                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Parar', handleStop);
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Descer texto', handleMoveTextDown);
                 break;
               case 2:
-                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Reiniciar', handleRestart);
-                break;
-              case 4:
                 runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Diminuir velocidade', () =>
                   updateSpeed(-SPEED_STEP),
                 );
                 break;
-              case 5:
+              case 3:
                 runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Aumentar velocidade', () =>
                   updateSpeed(SPEED_STEP),
                 );
+                break;
+              case 9:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Play/Pausa', handlePlayToggle);
+                break;
+              case 4:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Reiniciar', handleRestart);
+                break;
+              case 5:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Parar', handleStop);
                 break;
               case 12:
                 runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Subir texto', handleMoveTextUp);

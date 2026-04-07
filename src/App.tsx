@@ -123,6 +123,7 @@ function App() {
   const [text, setText] = useState(initialState.text);
   const [settings, setSettings] = useState<TeleprompterSettings>(initialState.settings);
   const [isMenuVisible, setIsMenuVisible] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsState>({
     gamepadName: 'Nenhum controle detectado',
     gamepadConnected: false,
@@ -143,6 +144,7 @@ function App() {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const previousButtonsRef = useRef<Record<number, boolean>>({});
   const previousAxisRef = useRef<number>(0);
+  const appShellRef = useRef<HTMLDivElement | null>(null);
 
   const selectedFont = FONT_OPTIONS.find((font) => font.family === settings.fontFamily) ?? FONT_OPTIONS[0];
 
@@ -226,6 +228,18 @@ function App() {
       }));
     }
   }, [playback.isPlaying, settings.fontSize, text]);
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsFullscreen(document.fullscreenElement === appShellRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+    };
+  }, []);
 
   const playLabel = playback.isPlaying ? (playback.isPaused ? 'Retomar' : 'Pausar') : 'Play';
   const opacityValue = settings.opacity / 100;
@@ -313,6 +327,23 @@ function App() {
 
   function handleMoveTextDown() {
     nudgeScroll(-MANUAL_SCROLL_STEP);
+  }
+
+  async function handleFullscreenToggle() {
+    const appShell = appShellRef.current;
+
+    if (!appShell) {
+      return;
+    }
+
+    if (document.fullscreenElement === appShell) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    if (!document.fullscreenElement) {
+      await appShell.requestFullscreen();
+    }
   }
 
   useEffect(() => {
@@ -503,8 +534,18 @@ function App() {
   }, []);
 
   return (
-    <div className={`app-shell ${playback.isPlaying ? 'is-playback' : ''} ${!isMenuVisible ? 'menu-hidden' : ''}`}>
+    <div
+      ref={appShellRef}
+      className={`app-shell ${playback.isPlaying ? 'is-playback' : ''} ${!isMenuVisible ? 'menu-hidden' : ''} ${isFullscreen ? 'is-fullscreen' : ''}`}
+    >
       <aside className={`control-panel ${!isMenuVisible ? 'is-hidden' : ''}`}>
+        <div className="mobile-menu-header">
+          <span>Controles</span>
+          <button className="menu-toggle" type="button" onClick={() => setIsMenuVisible(false)}>
+            Fechar menu
+          </button>
+        </div>
+
         <div className="panel-header">
           <p className="eyebrow">Teleprompter</p>
           <h1>Monitor de texto com rolagem ajustável</h1>
@@ -603,6 +644,9 @@ function App() {
           <button className="primary" type="button" onClick={handlePlayToggle}>
             {playLabel}
           </button>
+          <button type="button" onClick={() => void handleFullscreenToggle()}>
+            {isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+          </button>
           <button type="button" onClick={handleMoveTextUp}>
             Subir texto
           </button>
@@ -653,9 +697,14 @@ function App() {
 
       <main className="stage-panel">
         <div className="stage-toolbar">
-          <button className="menu-toggle" type="button" onClick={() => setIsMenuVisible((current) => !current)}>
-            {isMenuVisible ? 'Ocultar menu' : 'Mostrar menu'}
-          </button>
+          <div className="stage-toolbar-actions">
+            <button className="menu-toggle" type="button" onClick={() => setIsMenuVisible((current) => !current)}>
+              {isMenuVisible ? 'Ocultar menu' : 'Mostrar menu'}
+            </button>
+            <button className="menu-toggle" type="button" onClick={() => void handleFullscreenToggle()}>
+              {isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+            </button>
+          </div>
           <span>{playback.isPlaying ? (playback.isPaused ? 'Pausado' : 'Em execução') : 'Pré-visualização'}</span>
           <span>{settings.speed}px/s</span>
         </div>
@@ -690,6 +739,9 @@ function App() {
             </button>
             <button type="button" onClick={handleMoveTextUp}>
               Subir texto
+            </button>
+            <button type="button" onClick={handleMoveTextDown}>
+              Descer texto
             </button>
           </div>
         ) : null}

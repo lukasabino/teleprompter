@@ -506,7 +506,7 @@ button {
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding-bottom: 0.25rem;
+    padding-bottom: 0.1rem;
   }
 
   .mobile-menu-header span {
@@ -517,17 +517,17 @@ button {
   }
 
   .panel-header h1 {
-    margin-bottom: 0.4rem;
-    font-size: clamp(1.2rem, 2vw, 1.65rem);
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1;
   }
 
   .panel-copy {
-    max-width: none;
-    font-size: 0.82rem;
+    display: none;
   }
 
   .field textarea {
-    min-height: 72px;
+    min-height: 96px;
   }
 
   .field-textarea {
@@ -562,8 +562,34 @@ button {
   }
 
   .stage-panel {
-    padding: 1rem;
+    padding: 0.7rem;
     width: 100%;
+  }
+
+  .stage-toolbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    min-height: 36px;
+    padding: 0 0 0.15rem;
+    font-size: 0.64rem;
+    letter-spacing: 0.05em;
+  }
+
+  .stage-toolbar-actions {
+    gap: 0.35rem;
+  }
+
+  .stage-status {
+    display: none;
+  }
+
+  .menu-toggle {
+    min-height: 28px;
+    padding: 0.3rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
   }
 
   .field span,
@@ -578,7 +604,9 @@ button {
   }
 
   .eyebrow {
-    font-size: 0.7rem;
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.15rem;
   }
 
   .teleprompter-copy {

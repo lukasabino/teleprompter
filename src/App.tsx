@@ -695,7 +695,7 @@ function App() {
       </aside>
 
       <main className="stage-panel">
-        <div className="stage-toolbar">
+        <div className={`stage-toolbar ${!isMenuVisible ? 'menu-collapsed' : ''}`}>
           <div className="stage-toolbar-actions">
             <button className="menu-toggle" type="button" onClick={() => setIsMenuVisible((current) => !current)}>
               {isMenuVisible ? 'Ocultar menu' : 'Mostrar menu'}
@@ -704,7 +704,9 @@ function App() {
               {isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
             </button>
           </div>
-          <span>{playback.isPlaying ? (playback.isPaused ? 'Pausado' : 'Em execução') : 'Pré-visualização'}</span>
+          <span className="stage-status">
+            {playback.isPlaying ? (playback.isPaused ? 'Pausado' : 'Em execução') : 'Pré-visualização'}
+          </span>
           <span>{settings.speed}px/s</span>
         </div>
 

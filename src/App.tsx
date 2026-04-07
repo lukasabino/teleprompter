@@ -548,7 +548,6 @@ function App() {
 
         <div className="panel-header">
           <p className="eyebrow">Teleprompter</p>
-          <h1>Monitor de texto com rolagem ajustável</h1>
           <p className="panel-copy">
             Edite o roteiro, escolha a aparência do texto e inicie a leitura com espelhamento configurável.
           </p>

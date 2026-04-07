@@ -100,6 +100,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  min-width: 0;
 }
 
 .field span {
@@ -129,12 +130,22 @@ button {
 
 .field textarea {
   min-height: 180px;
-  resize: vertical;
-  line-height: 1.5;
+  display: block;
+  flex: 1 1 auto;
+  resize: none;
+  line-height: 1.55;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .field input[type='range'] {
   accent-color: #f0b76b;
+}
+
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: rgba(240, 183, 107, 0.42);
+  box-shadow: 0 0 0 3px rgba(240, 183, 107, 0.12);
 }
 
 .settings-grid {
@@ -144,9 +155,14 @@ button {
 }
 
 .field-textarea {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  flex: 1 1 220px;
+  min-height: 220px;
+  overflow: visible;
+  margin-bottom: 0.5rem;
+}
+
+.field-textarea textarea {
+  min-height: 220px;
 }
 
 .transport {
@@ -458,6 +474,11 @@ button {
 
   .settings-grid {
     grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .field-textarea {
+    margin-bottom: 0.85rem;
   }
 }
 
@@ -507,6 +528,15 @@ button {
 
   .field textarea {
     min-height: 72px;
+  }
+
+  .field-textarea {
+    flex: 0 0 auto;
+    min-height: auto;
+  }
+
+  .field-textarea textarea {
+    min-height: 120px;
   }
 
   .settings-grid {

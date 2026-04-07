@@ -42,6 +42,7 @@ button {
   display: grid;
   grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -52,7 +53,7 @@ button {
   padding: 2rem;
   width: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
   background: rgba(18, 16, 15, 0.78);
   backdrop-filter: blur(18px);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -123,7 +124,7 @@ button {
 }
 
 .field textarea {
-  min-height: 240px;
+  min-height: 180px;
   resize: vertical;
   line-height: 1.5;
 }
@@ -175,12 +176,83 @@ button {
   font-weight: 700;
 }
 
+.diagnostics-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.diagnostics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.diagnostics-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(247, 242, 232, 0.8);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.status-pill.is-online {
+  background: rgba(108, 193, 118, 0.16);
+  color: #b6f2bd;
+}
+
+.diagnostics-copy {
+  margin: 0;
+  color: rgba(247, 242, 232, 0.7);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.diagnostics-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.diagnostics-item strong {
+  color: #f0b76b;
+  font-size: 0.84rem;
+}
+
+.diagnostics-item span {
+  color: rgba(247, 242, 232, 0.88);
+  word-break: break-word;
+  font-size: 0.92rem;
+}
+
 .stage-panel {
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
   min-height: 0;
   overflow: hidden;
+  gap: 0.75rem;
 }
 
 .stage-toolbar {
@@ -193,6 +265,7 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.78rem;
+  flex-wrap: wrap;
 }
 
 .menu-toggle {
@@ -205,12 +278,21 @@ button {
 }
 
 .menu-hidden {
-  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.menu-hidden .control-panel {
+  display: none;
+}
+
+.menu-hidden .stage-panel {
+  padding: 1rem;
 }
 
 .teleprompter-stage {
   position: relative;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   border-radius: 28px;
   background:
@@ -227,14 +309,14 @@ button {
 
 .teleprompter-copy {
   min-height: calc(100% + 4rem);
-  padding: 14vh 5vw 24vh;
-  line-height: 1.3;
+  padding: 12vh 5vw 22vh;
+  line-height: 1.2;
   text-align: center;
   will-change: transform;
 }
 
 .teleprompter-copy p {
-  margin: 0 0 1.2em;
+  margin: 0 0 0.95em;
 }
 
 .is-playback .teleprompter-stage {
@@ -243,9 +325,32 @@ button {
     0 20px 80px rgba(0, 0, 0, 0.4);
 }
 
+.floating-transport {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.floating-transport button {
+  min-height: 48px;
+  padding: 0.8rem 0.65rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.floating-transport .primary {
+  background: linear-gradient(135deg, #f0b76b, #d06b39);
+  color: #160f0d;
+  border-color: transparent;
+  font-weight: 700;
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .control-panel {
@@ -256,19 +361,138 @@ button {
   .stage-panel {
     min-height: 0;
   }
+
+  .menu-hidden {
+    grid-template-rows: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 680px) {
+  .app-shell {
+    height: 100svh;
+    height: 100dvh;
+  }
+
   .control-panel,
   .stage-panel {
-    padding: 1rem;
+    padding: 0.9rem;
+  }
+
+  .stage-panel {
+    gap: 0.6rem;
+  }
+
+  .stage-toolbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem 0.75rem;
+    padding: 0;
+    font-size: 0.72rem;
+  }
+
+  .stage-toolbar span:last-child {
+    justify-self: end;
+  }
+
+  .menu-toggle {
+    min-height: 38px;
+    padding: 0.6rem 0.85rem;
+  }
+
+  .teleprompter-stage {
+    border-radius: 20px;
+  }
+
+  .teleprompter-copy {
+    padding: 10vh 1rem 18vh;
+    line-height: 1.15;
+  }
+
+  .floating-transport {
+    position: relative;
+    z-index: 2;
+  }
+
+  .floating-transport button {
+    min-height: 44px;
+    font-size: 0.88rem;
+  }
+
+  .menu-hidden .stage-panel {
+    padding: 0.75rem;
+    min-height: 100%;
+  }
+
+  .menu-hidden .stage-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .menu-hidden .teleprompter-stage {
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .menu-hidden .teleprompter-copy {
+    padding: 8vh 0.9rem 14vh;
   }
 
   .settings-grid {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 980px) and (orientation: landscape) {
+  .app-shell {
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .control-panel {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 0;
+    padding: 1rem;
+  }
+
+  .panel-header h1 {
+    font-size: clamp(1.4rem, 2vw, 2rem);
+  }
+
+  .panel-copy {
+    max-width: none;
+    font-size: 0.9rem;
+  }
+
+  .field textarea {
+    min-height: 96px;
+  }
+
+  .settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .transport {
+    gap: 0.5rem;
+  }
+
+  .transport button {
+    min-height: 40px;
+    padding: 0.65rem 0.9rem;
+  }
+
+  .diagnostics-panel {
+    display: none;
+  }
+
+  .stage-panel {
+    padding: 1rem;
+  }
 
   .teleprompter-copy {
-    padding: 10vh 1.25rem 20vh;
+    padding: 10vh 3vw 16vh;
+  }
+
+  .menu-hidden {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

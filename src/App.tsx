@@ -22,6 +22,14 @@ type PlaybackState = {
   scrollOffset: number;
 };
 
+type DiagnosticsState = {
+  gamepadName: string;
+  gamepadConnected: boolean;
+  lastKeyboardInput: string;
+  lastGamepadInput: string;
+  lastAction: string;
+};
+
 const STORAGE_KEY = 'teleprompter-state-v1';
 
 const DEFAULT_TEXT = `Cole ou digite seu roteiro aqui.
@@ -51,6 +59,20 @@ const DEFAULT_SETTINGS: TeleprompterSettings = {
 };
 
 const MANUAL_SCROLL_STEP = 160;
+const SPEED_STEP = 10;
+const MIN_SPEED = 10;
+const MAX_SPEED = 240;
+
+const BUTTON_LABELS: Record<number, string> = {
+  0: 'Botao 0 / A',
+  1: 'Botao 1 / B',
+  2: 'Botao 2 / X',
+  4: 'Botao 4 / LB',
+  5: 'Botao 5 / RB',
+  9: 'Botao 9 / Start',
+  12: 'D-pad cima',
+  13: 'D-pad baixo',
+};
 
 function loadInitialState(): {
   text: string;
@@ -101,6 +123,13 @@ function App() {
   const [text, setText] = useState(initialState.text);
   const [settings, setSettings] = useState<TeleprompterSettings>(initialState.settings);
   const [isMenuVisible, setIsMenuVisible] = useState(true);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsState>({
+    gamepadName: 'Nenhum controle detectado',
+    gamepadConnected: false,
+    lastKeyboardInput: 'Nenhuma tecla detectada',
+    lastGamepadInput: 'Nenhum comando detectado',
+    lastAction: 'Aguardando entrada',
+  });
   const [playback, setPlayback] = useState<PlaybackState>({
     isPlaying: false,
     isPaused: false,
@@ -108,9 +137,12 @@ function App() {
   });
 
   const frameRef = useRef<number | null>(null);
+  const gamepadFrameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const previousButtonsRef = useRef<Record<number, boolean>>({});
+  const previousAxisRef = useRef<number>(0);
 
   const selectedFont = FONT_OPTIONS.find((font) => font.family === settings.fontFamily) ?? FONT_OPTIONS[0];
 
@@ -198,9 +230,41 @@ function App() {
   const playLabel = playback.isPlaying ? (playback.isPaused ? 'Retomar' : 'Pausar') : 'Play';
   const opacityValue = settings.opacity / 100;
   const orientationTransform = settings.mirrorMode === 'horizontal-mirror' ? 'scaleX(-1)' : 'rotate(180deg)';
+  const floatingPlayLabel = playback.isPlaying ? (playback.isPaused ? 'Retomar' : 'Pausar') : 'Play';
 
   function updateSettings(partial: Partial<TeleprompterSettings>) {
     setSettings((current) => ({ ...current, ...partial }));
+  }
+
+  function updateSpeed(delta: number) {
+    setSettings((current) => ({
+      ...current,
+      speed: clamp(current.speed + delta, MIN_SPEED, MAX_SPEED),
+    }));
+  }
+
+  function recordAction(source: 'keyboard' | 'gamepad', input: string, action: string) {
+    const timestamp = new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+
+    setDiagnostics((current) => ({
+      ...current,
+      lastKeyboardInput: source === 'keyboard' ? `${input} (${timestamp})` : current.lastKeyboardInput,
+      lastGamepadInput: source === 'gamepad' ? `${input} (${timestamp})` : current.lastGamepadInput,
+      lastAction: `${action} (${timestamp})`,
+    }));
+  }
+
+  function nudgeScroll(delta: number) {
+    const maxOffset = getMaxOffset(viewportRef.current, contentRef.current);
+
+    setPlayback((current) => ({
+      ...current,
+      scrollOffset: clamp(current.scrollOffset + delta, 0, maxOffset),
+    }));
   }
 
   function handleFontChange(fontFamily: string) {
@@ -244,11 +308,199 @@ function App() {
   }
 
   function handleMoveTextUp() {
-    setPlayback((current) => ({
-      ...current,
-      scrollOffset: Math.max(current.scrollOffset - MANUAL_SCROLL_STEP, 0),
-    }));
+    nudgeScroll(MANUAL_SCROLL_STEP);
   }
+
+  function handleMoveTextDown() {
+    nudgeScroll(-MANUAL_SCROLL_STEP);
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isEditableTarget =
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLSelectElement ||
+        target?.isContentEditable === true;
+
+      if (isEditableTarget) {
+        return;
+      }
+
+      let action = '';
+
+      switch (event.code) {
+        case 'Space':
+        case 'Enter':
+        case 'KeyK':
+          event.preventDefault();
+          handlePlayToggle();
+          action = playback.isPlaying && !playback.isPaused ? 'Pausar/Reproduzir' : 'Iniciar/Reproduzir';
+          break;
+        case 'ArrowUp':
+        case 'PageUp':
+          event.preventDefault();
+          handleMoveTextUp();
+          action = 'Subir texto';
+          break;
+        case 'ArrowDown':
+        case 'PageDown':
+          event.preventDefault();
+          handleMoveTextDown();
+          action = 'Descer texto';
+          break;
+        case 'Equal':
+        case 'NumpadAdd':
+        case 'BracketRight':
+          event.preventDefault();
+          updateSpeed(SPEED_STEP);
+          action = 'Aumentar velocidade';
+          break;
+        case 'Minus':
+        case 'NumpadSubtract':
+        case 'BracketLeft':
+          event.preventDefault();
+          updateSpeed(-SPEED_STEP);
+          action = 'Diminuir velocidade';
+          break;
+        case 'KeyR':
+          event.preventDefault();
+          handleRestart();
+          action = 'Reiniciar';
+          break;
+        case 'Escape':
+          event.preventDefault();
+          handleStop();
+          action = 'Parar';
+          break;
+        default:
+          break;
+      }
+
+      if (action) {
+        recordAction('keyboard', `${event.code}${event.key ? ` (${event.key})` : ''}`, action);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [playback.isPaused, playback.isPlaying]);
+
+  useEffect(() => {
+    const updateConnectedGamepad = () => {
+      const gamepads = navigator.getGamepads?.() ?? [];
+      const activeGamepad = gamepads.find((gamepad) => gamepad !== null) ?? null;
+
+      setDiagnostics((current) => ({
+        ...current,
+        gamepadConnected: activeGamepad !== null,
+        gamepadName: activeGamepad ? activeGamepad.id : 'Nenhum controle detectado',
+      }));
+    };
+
+    const runGamepadAction = (input: string, action: string, callback: () => void) => {
+      callback();
+      recordAction('gamepad', input, action);
+    };
+
+    const pollGamepads = () => {
+      const gamepads = navigator.getGamepads?.() ?? [];
+      const activeGamepad = gamepads.find((gamepad) => gamepad !== null) ?? null;
+
+      if (activeGamepad) {
+        setDiagnostics((current) => ({
+          ...current,
+          gamepadConnected: true,
+          gamepadName: activeGamepad.id,
+        }));
+
+        activeGamepad.buttons.forEach((button, index) => {
+          const wasPressed = previousButtonsRef.current[index] ?? false;
+          const isPressed = button.pressed;
+
+          if (isPressed && !wasPressed) {
+            switch (index) {
+              case 0:
+              case 9:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Play/Pausa', handlePlayToggle);
+                break;
+              case 1:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Parar', handleStop);
+                break;
+              case 2:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Reiniciar', handleRestart);
+                break;
+              case 4:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Diminuir velocidade', () =>
+                  updateSpeed(-SPEED_STEP),
+                );
+                break;
+              case 5:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Aumentar velocidade', () =>
+                  updateSpeed(SPEED_STEP),
+                );
+                break;
+              case 12:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Subir texto', handleMoveTextUp);
+                break;
+              case 13:
+                runGamepadAction(BUTTON_LABELS[index] ?? `Botao ${index}`, 'Descer texto', handleMoveTextDown);
+                break;
+              default:
+                setDiagnostics((current) => ({
+                  ...current,
+                  lastGamepadInput: `Botao ${index} (${new Date().toLocaleTimeString('pt-BR')})`,
+                }));
+                break;
+            }
+          }
+
+          previousButtonsRef.current[index] = isPressed;
+        });
+
+        const verticalAxis = activeGamepad.axes[1] ?? 0;
+        const axisDirection = verticalAxis > 0.65 ? 1 : verticalAxis < -0.65 ? -1 : 0;
+
+        if (axisDirection !== 0 && axisDirection !== previousAxisRef.current) {
+          if (axisDirection < 0) {
+            runGamepadAction('Analógico para cima', 'Subir texto', handleMoveTextUp);
+          } else {
+            runGamepadAction('Analógico para baixo', 'Descer texto', handleMoveTextDown);
+          }
+        }
+
+        previousAxisRef.current = axisDirection;
+      } else {
+        previousButtonsRef.current = {};
+        previousAxisRef.current = 0;
+      }
+
+      gamepadFrameRef.current = window.requestAnimationFrame(pollGamepads);
+    };
+
+    const handleGamepadConnected = () => updateConnectedGamepad();
+    const handleGamepadDisconnected = () => updateConnectedGamepad();
+
+    window.addEventListener('gamepadconnected', handleGamepadConnected);
+    window.addEventListener('gamepaddisconnected', handleGamepadDisconnected);
+
+    updateConnectedGamepad();
+    gamepadFrameRef.current = window.requestAnimationFrame(pollGamepads);
+
+    return () => {
+      window.removeEventListener('gamepadconnected', handleGamepadConnected);
+      window.removeEventListener('gamepaddisconnected', handleGamepadDisconnected);
+
+      if (gamepadFrameRef.current !== null) {
+        cancelAnimationFrame(gamepadFrameRef.current);
+        gamepadFrameRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className={`app-shell ${playback.isPlaying ? 'is-playback' : ''} ${!isMenuVisible ? 'menu-hidden' : ''}`}>
@@ -354,6 +606,9 @@ function App() {
           <button type="button" onClick={handleMoveTextUp}>
             Subir texto
           </button>
+          <button type="button" onClick={handleMoveTextDown}>
+            Descer texto
+          </button>
           <button type="button" onClick={handleRestart}>
             Reiniciar
           </button>
@@ -361,6 +616,39 @@ function App() {
             Parar
           </button>
         </div>
+
+        <section className="diagnostics-panel">
+          <div className="diagnostics-header">
+            <h2>Controle externo</h2>
+            <span className={diagnostics.gamepadConnected ? 'status-pill is-online' : 'status-pill'}>
+              {diagnostics.gamepadConnected ? 'Gamepad conectado' : 'Sem gamepad'}
+            </span>
+          </div>
+
+          <p className="diagnostics-copy">
+            Atalhos de teclado: `Space/Enter/K` play ou pausa, `setas` sobem ou descem o texto, `+/-` ajustam
+            velocidade, `R` reinicia e `Esc` para.
+          </p>
+
+          <div className="diagnostics-grid">
+            <div className="diagnostics-item">
+              <strong>Dispositivo</strong>
+              <span>{diagnostics.gamepadName}</span>
+            </div>
+            <div className="diagnostics-item">
+              <strong>Ultima tecla</strong>
+              <span>{diagnostics.lastKeyboardInput}</span>
+            </div>
+            <div className="diagnostics-item">
+              <strong>Ultimo comando do controle</strong>
+              <span>{diagnostics.lastGamepadInput}</span>
+            </div>
+            <div className="diagnostics-item">
+              <strong>Ultima acao executada</strong>
+              <span>{diagnostics.lastAction}</span>
+            </div>
+          </div>
+        </section>
       </aside>
 
       <main className="stage-panel">
@@ -391,6 +679,20 @@ function App() {
             </div>
           </div>
         </div>
+
+        {!isMenuVisible ? (
+          <div className="floating-transport">
+            <button className="primary" type="button" onClick={handlePlayToggle}>
+              {floatingPlayLabel}
+            </button>
+            <button type="button" onClick={handleRestart}>
+              Reiniciar
+            </button>
+            <button type="button" onClick={handleMoveTextUp}>
+              Subir texto
+            </button>
+          </div>
+        ) : null}
       </main>
     </div>
   );
@@ -402,6 +704,10 @@ function getMaxOffset(viewport: HTMLDivElement | null, content: HTMLDivElement |
   }
 
   return Math.max(content.scrollHeight - viewport.clientHeight + 64, 0);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 export default App;
